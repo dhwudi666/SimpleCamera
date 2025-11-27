@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="120dp"
+    android:layout_height="120dp"
+    android:orientation="vertical"
+    android:padding="4dp">
+
+    <ImageView
+        android:id="@+id/mediaImage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:background="#f0f0f0" />
+
+    <!-- 如果是视频，显示视频图标 -->
+    <ImageView
+        android:id="@+id/videoIcon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="top|end"
+        android:src="@android:drawable/ic_media_play"
+        android:visibility="gone"
+        android:layout_margin="8dp" />
+
+</LinearLayout>
