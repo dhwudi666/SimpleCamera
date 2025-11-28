@@ -2,8 +2,12 @@ package com.example.simplecamera.activity;
 
 import android.Manifest;
 import android.content.ContentValues;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -17,11 +21,6 @@ import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
-import androidx.camera.video.Quality;
-import androidx.camera.video.QualitySelector;
-import androidx.camera.video.Recorder;
-import androidx.camera.video.VideoCapture;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.camera.view.PreviewView;
 import androidx.fragment.app.Fragment;
@@ -32,9 +31,10 @@ import com.example.simplecamera.database.entity.MediaFile;
 import com.example.simplecamera.ui.CameraViewModel;
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.io.File;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Locale;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -43,18 +43,20 @@ public class CameraFragment extends Fragment {
     private static final int PERMISSION_REQUEST_CODE = 1001;
 
     private PreviewView previewView;
-    private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
     private ExecutorService cameraExecutor;
     private ImageCapture imageCapture;
-    private VideoCapture<Recorder> videoCapture;
     private CameraViewModel viewModel;
+    private ProcessCameraProvider cameraProvider;
 
-    // 权限数组
-    private final String[] REQUIRED_PERMISSIONS = new String[]{
+    // 添加存储权限
+    private final String[] REQUIRED_PERMISSIONS = {
             Manifest.permission.CAMERA,
             Manifest.permission.RECORD_AUDIO,
             Manifest.permission.WRITE_EXTERNAL_STORAGE
     };
+
+    // 应用专属目录
+    private File appStorageDir;
 
     @Nullable
     @Override
@@ -62,21 +64,22 @@ public class CameraFragment extends Fragment {
         View view = inflater.inflate(R.layout.activity_camera, container, false);
         previewView = view.findViewById(R.id.previewView);
 
+        // 初始化应用专属目录
+        initAppStorageDir();
+
         // 初始化ViewModel
         viewModel = new ViewModelProvider(requireActivity()).get(CameraViewModel.class);
 
         // 设置按钮点击事件
         view.findViewById(R.id.captureButton).setOnClickListener(v -> takePhoto());
-        view.findViewById(R.id.recordButton).setOnClickListener(v -> toggleRecording());
         view.findViewById(R.id.flipButton).setOnClickListener(v -> flipCamera());
         view.findViewById(R.id.galleryButton).setOnClickListener(v -> openGallery());
 
         cameraExecutor = Executors.newSingleThreadExecutor();
-        cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext());
 
         // 检查并请求权限
         if (allPermissionsGranted()) {
-            initializeCamera();
+            startCamera();
         } else {
             requestPermissions(REQUIRED_PERMISSIONS, PERMISSION_REQUEST_CODE);
         }
@@ -84,7 +87,21 @@ public class CameraFragment extends Fragment {
         return view;
     }
 
-    // 检查所有权限是否已授予
+    private void initAppStorageDir() {
+        // 创建应用专属目录
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Android 10+ 使用应用专属目录，无需权限
+            appStorageDir = new File(requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES), "SimpleCamera");
+        } else {
+            // Android 9及以下使用公共目录
+            appStorageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "SimpleCamera");
+        }
+
+        if (!appStorageDir.exists()) {
+            appStorageDir.mkdirs();
+        }
+    }
+
     private boolean allPermissionsGranted() {
         for (String permission : REQUIRED_PERMISSIONS) {
             if (ContextCompat.checkSelfPermission(requireContext(), permission) != PackageManager.PERMISSION_GRANTED) {
@@ -94,72 +111,68 @@ public class CameraFragment extends Fragment {
         return true;
     }
 
-    // 处理权限请求结果
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (allPermissionsGranted()) {
-                initializeCamera();
+                startCamera();
             } else {
                 Toast.makeText(getContext(), "Permissions not granted", Toast.LENGTH_SHORT).show();
-                requireActivity().finish();
             }
         }
     }
 
-    // 初始化相机
-    private void initializeCamera() {
+    private void startCamera() {
+        ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext());
+
         cameraProviderFuture.addListener(() -> {
             try {
-                ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
-                bindCameraUseCases(cameraProvider);
-            } catch (ExecutionException | InterruptedException e) {
-                Log.e(TAG, "Camera initialization failed", e);
-                Toast.makeText(getContext(), "Camera initialization failed", Toast.LENGTH_SHORT).show();
+                cameraProvider = cameraProviderFuture.get();
+                bindCameraUseCases();
+            } catch (Exception e) {
+                Log.e(TAG, "Camera start failed", e);
+                Toast.makeText(getContext(), "Camera start failed", Toast.LENGTH_SHORT).show();
             }
         }, ContextCompat.getMainExecutor(requireContext()));
     }
 
-    private void bindCameraUseCases(ProcessCameraProvider cameraProvider) {
-        // 检查权限
-        if (!allPermissionsGranted()) {
-            return;
-        }
-
-        // 配置Preview
-        Preview preview = new Preview.Builder().build();
-
-        // 配置ImageCapture
-        imageCapture = new ImageCapture.Builder()
-                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                .build();
-
-        // 配置VideoCapture
-        Recorder recorder = new Recorder.Builder()
-                .setQualitySelector(QualitySelector.from(Quality.HIGHEST))
-                .build();
-        videoCapture = VideoCapture.withOutput(recorder);
-
-        // 选择摄像头方向
-        CameraSelector cameraSelector = new CameraSelector.Builder()
-                .requireLensFacing(viewModel.isFrontCamera.getValue() != null && viewModel.isFrontCamera.getValue() ?
-                        CameraSelector.LENS_FACING_FRONT : CameraSelector.LENS_FACING_BACK)
-                .build();
+    private void bindCameraUseCases() {
+        if (cameraProvider == null) return;
 
         try {
             // 解绑所有用例
             cameraProvider.unbindAll();
 
-            // 绑定用例到生命周期
-            cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture, videoCapture);
+            // 选择摄像头方向
+            boolean useFrontCamera = viewModel.isFrontCamera.getValue() != null &&
+                    viewModel.isFrontCamera.getValue();
+            int lensFacing = useFrontCamera ? CameraSelector.LENS_FACING_FRONT : CameraSelector.LENS_FACING_BACK;
+
+            CameraSelector cameraSelector = new CameraSelector.Builder()
+                    .requireLensFacing(lensFacing)
+                    .build();
+
+            // 配置Preview
+            Preview preview = new Preview.Builder().build();
+
+            // 配置ImageCapture - 优化配置
+            imageCapture = new ImageCapture.Builder()
+                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                    .setTargetRotation(previewView.getDisplay().getRotation())
+                    .build();
 
             // 设置预览
             preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
+            // 绑定到生命周期
+            cameraProvider.bindToLifecycle(getViewLifecycleOwner(), cameraSelector, preview, imageCapture);
+
+            Log.d(TAG, "Camera started successfully");
+
         } catch (Exception e) {
             Log.e(TAG, "Camera binding failed", e);
-            Toast.makeText(getContext(), "Camera binding failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Camera binding failed", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -170,40 +183,56 @@ public class CameraFragment extends Fragment {
         }
 
         // 创建文件名
-        String name = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(System.currentTimeMillis());
-
-        // 创建内容值
-        ContentValues contentValues = new ContentValues();
-        contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, "IMG_" + name);
-        contentValues.put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg");
-
-        // 如果是Android 10及以上，需要添加RELATIVE_PATH
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            contentValues.put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/SimpleCamera");
-        }
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+        String fileName = "IMG_" + timeStamp + ".jpg";
 
         // 创建输出选项
-        ImageCapture.OutputFileOptions outputOptions = new ImageCapture.OutputFileOptions.Builder(
-                requireContext().getContentResolver(),
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                contentValues).build();
+        ImageCapture.OutputFileOptions outputOptions;
 
-        // 拍摄照片
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Android 10+ 使用 MediaStore
+            outputOptions = createMediaStoreOutputOptions(fileName);
+        } else {
+            // Android 9及以下使用文件保存
+            outputOptions = createFileOutputOptions(fileName);
+        }
+
+        // 拍照
         imageCapture.takePicture(outputOptions, cameraExecutor, new ImageCapture.OnImageSavedCallback() {
             @Override
             public void onImageSaved(@NonNull ImageCapture.OutputFileResults outputFileResults) {
                 requireActivity().runOnUiThread(() -> {
-                    Toast.makeText(getContext(), "Photo saved successfully", Toast.LENGTH_SHORT).show();
+                    try {
+                        String filePath = null;
+                        Uri savedUri = outputFileResults.getSavedUri();
 
-                    if (outputFileResults.getSavedUri() != null) {
-                        // 保存到数据库
-                        MediaFile mediaFile = new MediaFile(
-                                outputFileResults.getSavedUri().toString(),
-                                0, // 0 for image
-                                System.currentTimeMillis(),
-                                null
-                        );
-                        viewModel.saveMediaFile(mediaFile);
+                        if (savedUri != null) {
+                            // MediaStore 方式保存
+                            filePath = savedUri.toString();
+                            Log.d(TAG, "Photo saved via MediaStore: " + filePath);
+                        } else {
+                            // 文件方式保存
+                            filePath = getLatestImagePath();
+                            Log.d(TAG, "Photo saved via file: " + filePath);
+                        }
+
+                        if (filePath != null) {
+                            // 保存到数据库
+                            MediaFile mediaFile = new MediaFile(
+                                    filePath,
+                                    0, // 0 for image
+                                    System.currentTimeMillis(),
+                                    null
+                            );
+                            viewModel.saveMediaFile(mediaFile);
+                            Toast.makeText(getContext(), "Photo saved successfully", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(getContext(), "Photo saved but path is null", Toast.LENGTH_SHORT).show();
+                        }
+
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error saving photo info", e);
+                        Toast.makeText(getContext(), "Error saving photo info", Toast.LENGTH_SHORT).show();
                     }
                 });
             }
@@ -212,14 +241,46 @@ public class CameraFragment extends Fragment {
             public void onError(@NonNull ImageCaptureException exception) {
                 Log.e(TAG, "Photo capture failed: " + exception.getMessage(), exception);
                 requireActivity().runOnUiThread(() ->
-                        Toast.makeText(getContext(), "Photo capture failed: " + exception.getMessage(), Toast.LENGTH_SHORT).show());
+                        Toast.makeText(getContext(), "Photo failed: " + exception.getMessage(), Toast.LENGTH_LONG).show());
             }
         });
     }
 
-    private void toggleRecording() {
-        // 视频录制功能占位实现
-        Toast.makeText(getContext(), "Video recording not implemented yet", Toast.LENGTH_SHORT).show();
+    private ImageCapture.OutputFileOptions createMediaStoreOutputOptions(String fileName) {
+        ContentValues contentValues = new ContentValues();
+        contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName);
+        contentValues.put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg");
+        contentValues.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/SimpleCamera");
+
+        return new ImageCapture.OutputFileOptions.Builder(
+                requireContext().getContentResolver(),
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                contentValues).build();
+    }
+
+    private ImageCapture.OutputFileOptions createFileOutputOptions(String fileName) {
+        File photoFile = new File(appStorageDir, fileName);
+        return new ImageCapture.OutputFileOptions.Builder(photoFile).build();
+    }
+
+    private String getLatestImagePath() {
+        try {
+            File[] files = appStorageDir.listFiles((dir, name) -> name.endsWith(".jpg"));
+            if (files != null && files.length > 0) {
+                // 按最后修改时间排序，获取最新的文件
+                File latestFile = files[0];
+                for (File file : files) {
+                    if (file.lastModified() > latestFile.lastModified()) {
+                        latestFile = file;
+                    }
+                }
+                // 返回文件绝对路径
+                return latestFile.getAbsolutePath();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting latest image path", e);
+        }
+        return null;
     }
 
     private void flipCamera() {
@@ -227,29 +288,54 @@ public class CameraFragment extends Fragment {
             viewModel.isFrontCamera.setValue(false);
         }
 
-        // 切换摄像头方向
-        viewModel.isFrontCamera.setValue(!viewModel.isFrontCamera.getValue());
+        boolean current = viewModel.isFrontCamera.getValue();
+        viewModel.isFrontCamera.setValue(!current);
 
-        // 重新绑定相机
-        cameraProviderFuture.addListener(() -> {
-            try {
-                ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
-                bindCameraUseCases(cameraProvider);
-            } catch (ExecutionException | InterruptedException e) {
-                Log.e(TAG, "Camera flip failed", e);
-                Toast.makeText(getContext(), "Failed to flip camera", Toast.LENGTH_SHORT).show();
-            }
-        }, ContextCompat.getMainExecutor(requireContext()));
+        // 重新启动摄像头
+        startCamera();
     }
 
     private void openGallery() {
-        // 跳转到相册Fragment
-        Toast.makeText(getContext(), "Opening gallery", Toast.LENGTH_SHORT).show();
-        // 这里需要根据您的实际Fragment类名进行调整
-        // requireActivity().getSupportFragmentManager().beginTransaction()
-        //         .replace(R.id.fragment_container, new GalleryFragment())
-        //         .addToBackStack(null)
-        //         .commit();
+        try {
+            // 跳转到应用内的相册Fragment
+            navigateToAppGallery();
+        } catch (Exception e) {
+            Log.e(TAG, "Error opening gallery", e);
+            Toast.makeText(getContext(), "Error opening gallery", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void navigateToAppGallery() {
+        try {
+            // 创建GalleryFragment实例
+            GalleryFragment galleryFragment = new GalleryFragment();
+
+            // 使用Fragment事务进行跳转
+            requireActivity().getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, galleryFragment) // 替换当前Fragment
+                    .addToBackStack("camera") // 添加到返回栈，可以返回相机界面
+                    .commit();
+
+            Log.d(TAG, "Navigated to gallery successfully");
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error navigating to gallery", e);
+            Toast.makeText(getContext(), "Cannot open gallery", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void openPicturesDirectory() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            Uri uri = Uri.parse(appStorageDir.getAbsolutePath());
+            intent.setDataAndType(uri, "resource/folder");
+
+            if (intent.resolveActivity(requireContext().getPackageManager()) != null) {
+                startActivity(intent);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error opening pictures directory", e);
+        }
     }
 
     @Override
@@ -257,6 +343,9 @@ public class CameraFragment extends Fragment {
         super.onDestroy();
         if (cameraExecutor != null) {
             cameraExecutor.shutdown();
+        }
+        if (cameraProvider != null) {
+            cameraProvider.unbindAll();
         }
     }
 }

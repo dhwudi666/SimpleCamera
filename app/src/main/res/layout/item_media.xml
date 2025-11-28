@@ -21,5 +21,16 @@
         android:src="@android:drawable/ic_media_play"
         android:visibility="gone"
         android:layout_margin="8dp" />
-
+    <!-- 文件类型标识 -->
+    <TextView
+        android:id="@+id/fileTypeText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_margin="4dp"
+        android:background="#80000000"
+        android:padding="2dp"
+        android:textColor="#FFFFFF"
+        android:textSize="10sp"
+        android:visibility="gone" />
 </LinearLayout>
