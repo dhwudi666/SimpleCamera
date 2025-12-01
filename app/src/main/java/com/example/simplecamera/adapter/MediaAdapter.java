@@ -1,4 +1,4 @@
-package com.example.simplecamera.Adapter;
+package com.example.simplecamera.adapter;
 
 import android.graphics.drawable.Drawable;
 import android.net.Uri;

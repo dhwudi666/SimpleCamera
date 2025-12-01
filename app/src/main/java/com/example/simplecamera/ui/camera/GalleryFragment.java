@@ -1,4 +1,4 @@
-package com.example.simplecamera.activity;
+package com.example.simplecamera.ui.camera;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -16,9 +16,9 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.simplecamera.R;
-import com.example.simplecamera.Adapter.MediaAdapter;
+import com.example.simplecamera.adapter.MediaAdapter;
 import com.example.simplecamera.database.entity.MediaFile;
-import com.example.simplecamera.ui.GalleryViewModel;
+import com.example.simplecamera.viewmodel.GalleryViewModel;
 
 import java.util.ArrayList;
 
@@ -34,12 +34,10 @@ public class GalleryFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.activity_gallery, container, false);
-
         initViews(view);
         setupRecyclerView();
         setupViewModel();
         setupClickListeners();
-
         return view;
     }
 
@@ -49,11 +47,6 @@ public class GalleryFragment extends Fragment {
         backButton = view.findViewById(R.id.backButton);
         emptyText = view.findViewById(R.id.emptyText);
 
-        // 如果没有返回按钮，可以添加一个
-        if (backButton == null) {
-            // 可以在标题栏添加返回功能
-            titleText.setOnClickListener(v -> goBackToCamera());
-        }
     }
 
     private void setupRecyclerView() {

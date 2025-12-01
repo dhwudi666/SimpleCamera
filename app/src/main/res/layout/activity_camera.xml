@@ -3,65 +3,77 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- 摄像头预览 -->
     <androidx.camera.view.PreviewView
         android:id="@+id/previewView"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
-    <!-- 录制状态指示器 -->
+
+    <!-- 录像计时器 -->
     <TextView
-        android:id="@+id/recordingIndicator"
+        android:id="@+id/recordingTimer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="20dp"
-        android:text="● RECORDING"
+        android:text="00:00"
         android:textColor="#FF0000"
-        android:textSize="16sp"
-        android:visibility="gone"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:background="#80FFFFFF"
         android:padding="8dp"
-        android:background="#80FFFFFF" />
+        android:visibility="gone" />
 
+    <!-- 底部控制栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:orientation="horizontal"
-        android:gravity="center"
-        android:padding="10dp"
-        android:background="@android:color/black">
+        android:padding="20dp"
+        android:gravity="center">
 
+        <!-- 翻转摄像头 -->
         <ImageButton
             android:id="@+id/flipButton"
             android:layout_width="60dp"
             android:layout_height="60dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/ic_menu_camera" />
+            android:src="@android:drawable/ic_menu_camera"
+            android:layout_marginEnd="20dp" />
 
+        <!-- 模式切换按钮 -->
+        <ImageButton
+            android:id="@+id/modeSwitchButton"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:src="@drawable/ic_video"
+            android:layout_marginEnd="20dp" />
+
+        <!-- 拍照/录像按钮 -->
+        <ImageButton
+            android:id="@+id/recordButton"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/photo_camera_24px"
+            android:layout_marginEnd="20dp" />
+
+
+        <!-- 拍照按钮（仅在拍照模式下显示） -->
         <ImageButton
             android:id="@+id/captureButton"
             android:layout_width="60dp"
             android:layout_height="60dp"
-            android:layout_marginStart="20dp"
-            android:layout_marginEnd="20dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/photo_camera_24px" />
+            android:src="@drawable/photo_camera_24px"
+            android:visibility="gone" />
 
-        <ImageButton
-            android:id="@+id/recordButton"
-            android:layout_width="60dp"
-            android:layout_height="60dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/videocam_24px" />
-
+        <!-- 相册按钮 -->
         <ImageButton
             android:id="@+id/galleryButton"
             android:layout_width="60dp"
             android:layout_height="60dp"
-            android:layout_marginStart="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/gallery_thumbnail_24px" />
-
+            android:src="@drawable/gallery_thumbnail_24px"
+            android:layout_marginEnd="20dp" />
     </LinearLayout>
 
 </RelativeLayout>

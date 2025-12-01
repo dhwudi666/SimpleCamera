@@ -1,14 +1,11 @@
-package com.example.simplecamera;
+package com.example.simplecamera.ui;
 
 import android.os.Bundle;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
-import com.example.simplecamera.activity.CameraFragment;
+import com.example.simplecamera.R;
+import com.example.simplecamera.ui.camera.CameraFragment;
 
 public class MainActivity extends AppCompatActivity {
     @Override

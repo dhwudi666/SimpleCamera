@@ -1,4 +1,4 @@
-package com.example.simplecamera.ui;
+package com.example.simplecamera.viewmodel;
 
 import android.app.Application;
 import androidx.lifecycle.AndroidViewModel;
