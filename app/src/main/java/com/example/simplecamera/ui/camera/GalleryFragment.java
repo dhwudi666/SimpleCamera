@@ -19,6 +19,7 @@ import com.example.simplecamera.R;
 import com.example.simplecamera.adapter.MediaAdapter;
 import com.example.simplecamera.database.entity.MediaFile;
 import com.example.simplecamera.viewmodel.GalleryViewModel;
+import com.example.simplecamera.ui.camera.MediaPreviewFragment;
 
 import java.util.ArrayList;
 
@@ -92,13 +93,17 @@ public class GalleryFragment extends Fragment {
     }
 
     private void openMediaDetail(MediaFile mediaFile) {
-        // 这里可以跳转到图片/视频详情页面
-        // 暂时用Toast提示
-        if (mediaFile.getFileType() == 0) {
-            Toast.makeText(getContext(), "打开图片: " + mediaFile.getFilePath(), Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(getContext(), "播放视频: " + mediaFile.getFilePath(), Toast.LENGTH_SHORT).show();
+        if (mediaFile == null || mediaFile.getFilePath() == null) {
+            Toast.makeText(getContext(), "媒体文件不可用", Toast.LENGTH_SHORT).show();
+            return;
         }
+        // 使用 MediaPreviewFragment 进行显示/播放
+        MediaPreviewFragment preview = MediaPreviewFragment.newInstance(mediaFile.getFilePath(), mediaFile.getFileType());
+        requireActivity().getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragment_container, preview)
+                .addToBackStack("preview")
+                .commit();
     }
 
     private void goBackToCamera() {

@@ -21,6 +21,7 @@
         android:src="@android:drawable/ic_media_play"
         android:visibility="gone"
         android:layout_margin="8dp" />
+
     <!-- 文件类型标识 -->
     <TextView
         android:id="@+id/fileTypeText"

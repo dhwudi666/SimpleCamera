@@ -11,7 +11,7 @@ import com.example.simplecamera.database.repository.MediaRepository;
 
 public class CameraViewModel extends AndroidViewModel {
     private MediaRepository repository;
-    public MutableLiveData<Boolean> isRecording = new MutableLiveData<>(false);
+//    public MutableLiveData<Boolean> isRecording = new MutableLiveData<>(false);
     public MutableLiveData<Boolean> isFrontCamera = new MutableLiveData<>(false);
 
     public CameraViewModel(@NonNull Application application) {
