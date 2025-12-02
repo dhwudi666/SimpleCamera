@@ -111,12 +111,12 @@ public class GalleryFragment extends Fragment {
         requireActivity().getSupportFragmentManager().popBackStack();
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        // 刷新数据
-        if (viewModel != null) {
-            // 可以在这里触发数据刷新
-        }
-    }
+//    @Override
+//    public void onResume() {
+//        super.onResume();
+//        // 刷新数据
+//        if (viewModel != null) {
+//            // 可以在这里触发数据刷新
+//        }
+//    }
 }

@@ -1,4 +1,3 @@
-// java
 package com.example.simplecamera.ui.camera;
 
 import android.content.ContentValues;
@@ -41,11 +40,10 @@ import java.util.concurrent.Executors;
 
 /**
  * CameraController：封装摄像头初始化、绑定、拍照与录像控制。
- * 通过 Callback 将结果与错误回调给调用方（通常为 CameraFragment）。
+ * 通过 Callback 将结果与错误回调给调用方。
  */
 public class CameraController {
     private static final String TAG = "CameraController";
-
     private final Context context;
     private final LifecycleOwner lifecycleOwner;
     private final PreviewView previewView;
@@ -85,7 +83,9 @@ public class CameraController {
     }
 
     public void startCamera() {
+        //拿到一个异步初始化句柄
         ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(context);
+        //注册完成回调
         cameraProviderFuture.addListener(() -> {
             try {
                 cameraProvider = cameraProviderFuture.get();
@@ -102,31 +102,30 @@ public class CameraController {
 
         try {
             cameraProvider.unbindAll();
-
+            //前后置选择
             int lensFacing = useFrontCamera ? CameraSelector.LENS_FACING_FRONT : CameraSelector.LENS_FACING_BACK;
             CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(lensFacing).build();
 
-            // 使用 AspectRatio 让 CameraX 选择更合适的分辨率，避免强制 1920x1080 导致性能问题
+            // 使用 AspectRatio 让 CameraX 选择更合适的分辨率，把相机流喂给控件
             Preview preview = new Preview.Builder()
                     .setTargetAspectRatio(AspectRatio.RATIO_16_9)
                     .build();
             preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
-            // 对照片使用 4:3 比例（通常更节省资源），并保留最小延迟模式
+            // 对照片使用 4:3 比例，并保留最小延迟模式
             imageCapture = new ImageCapture.Builder()
                     .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                     .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                     .setTargetRotation(previewView.getDisplay() != null ? previewView.getDisplay().getRotation() : Surface.ROTATION_0)
                     .build();
 
-            // 如果已经准备了 videoCapture 则一起绑定，否则只绑定 preview + imageCapture
+            // 如果已经准备了 videoCapture 则一起绑定到生命周期，否则只绑定 preview + imageCapture
             if (videoCapture == null) {
                 cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageCapture);
             } else {
                 cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageCapture, videoCapture);
             }
-
-            Log.d(TAG, "Camera bound successfully (aspect ratio optimized)");
+            Log.d(TAG, "Camera bound successfully");
         } catch (Exception e) {
             Log.e(TAG, "Camera binding failed", e);
             if (callback != null) callback.onRecordingError("Camera binding failed: " + e.getMessage());
@@ -134,6 +133,7 @@ public class CameraController {
         }
     }
 
+    //降级到最简单的“只预览”模式
     private void tryFallbackCameraConfiguration() {
         if (cameraProvider == null) return;
         try {
@@ -158,6 +158,7 @@ public class CameraController {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
         String fileName = "IMG_" + timeStamp + ".jpg";
 
+        //根据系统版本，选择两条不同的保存路径，把拍出来的照片写进相册
         ImageCapture.OutputFileOptions outputOptions;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ContentValues contentValues = new ContentValues();
@@ -173,7 +174,7 @@ public class CameraController {
             File photoFile = new File(appStorageDir, fileName);
             outputOptions = new ImageCapture.OutputFileOptions.Builder(photoFile).build();
         }
-
+        //触发一次 JPEG 拍照，后台执行，写盘完成或失败时回调
         imageCapture.takePicture(outputOptions, cameraExecutor, new ImageCapture.OnImageSavedCallback() {
             @Override
             public void onImageSaved(@NonNull ImageCapture.OutputFileResults outputFileResults) {
@@ -184,6 +185,7 @@ public class CameraController {
                     } else {
                         filePath = getLatestImagePath();
                     }
+                    //结果交给上层
                     if (callback != null) callback.onPhotoSaved(filePath);
                 } catch (Exception e) {
                     Log.e(TAG, "onImageSaved error", e);
@@ -213,7 +215,7 @@ public class CameraController {
             return;
         }
 
-        // 如果还没有 videoCapture，延迟创建 Recorder（选择较低质量以减少启动开销）
+        // 如果还没有 videoCapture，延迟创建 Recorder
         if (videoCapture == null) {
             try {
                 Recorder recorder = new Recorder.Builder()
@@ -221,14 +223,15 @@ public class CameraController {
                         .setQualitySelector(QualitySelector.from(Quality.HD,
                                 FallbackStrategy.higherQualityOrLowerThan(Quality.SD)))
                         .build();
+                //把刚才配置好的 Recorder 包装成一个 VideoCapture 用例
                 videoCapture = VideoCapture.withOutput(recorder);
             } catch (Exception e) {
                 Log.w(TAG, "Recorder init failed", e);
                 if (callback != null) callback.onRecordingError("Recorder init failed: " + e.getMessage());
-                // 仍然尝试继续（不创建 videoCapture 则无法录制）
+                // 仍然尝试继续
                 return;
             }
-            // 重新绑定用例（此时 videoCapture 已就绪）
+            // 重新绑定用例
             bindCameraUseCases();
         }
 
@@ -326,7 +329,6 @@ public class CameraController {
         }
         return null;
     }
-
     public void release() {
         try {
             if (isRecording) stopRecording();
