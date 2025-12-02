@@ -2,6 +2,7 @@ package com.example.simplecamera.database.dao;
 
 import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
+import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.Query;
 
@@ -14,9 +15,16 @@ public interface MediaFileDao {
     @Insert
     void insert(MediaFile mediaFile);
 
+    @Delete
+    void delete(MediaFile mediaFile);
+
+    @Query("DELETE FROM media_files")
+    void deleteAll();
+
     @Query("SELECT * FROM media_files ORDER BY created_date DESC")
     LiveData<List<MediaFile>> getAllMediaFiles();
 
-    @Query("DELETE FROM media_files WHERE file_path = :filePath")
-    void deleteByFilePath(String filePath);
+    @Query("SELECT * FROM media_files ORDER BY created_date DESC")
+    List<MediaFile> getAllMediaFilesSync();
+
 }

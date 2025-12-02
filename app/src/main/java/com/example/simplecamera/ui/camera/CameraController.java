@@ -37,6 +37,7 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * CameraController：封装摄像头初始化、绑定、拍照与录像控制。
@@ -330,12 +331,45 @@ public class CameraController {
         return null;
     }
     public void release() {
+        Log.d(TAG, "Releasing camera resources...");
         try {
-            if (isRecording) stopRecording();
-            if (cameraExecutor != null) cameraExecutor.shutdown();
-            if (cameraProvider != null) cameraProvider.unbindAll();
+            // 1. 停止录像
+            if (isRecording && activeRecording != null) {
+                Log.d(TAG, "Stopping active recording");
+                activeRecording.stop();
+                activeRecording = null;
+                isRecording = false;
+            }
+
+            // 2. 关闭执行器
+            if (cameraExecutor != null && !cameraExecutor.isShutdown()) {
+                Log.d(TAG, "Shutting down camera executor");
+                cameraExecutor.shutdown();
+                try {
+                    if (!cameraExecutor.awaitTermination(2, TimeUnit.SECONDS)) {
+                        cameraExecutor.shutdownNow();
+                    }
+                } catch (InterruptedException e) {
+                    cameraExecutor.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
+            }
+
+            // 3. 解绑所有摄像头用例
+            if (cameraProvider != null) {
+                Log.d(TAG, "Unbinding all camera use cases");
+                cameraProvider.unbindAll();
+                cameraProvider = null;
+            }
+
+            // 4. 清理其他资源
+            imageCapture = null;
+            videoCapture = null;
+
+            Log.d(TAG, "Camera resources released successfully");
+
         } catch (Exception e) {
-            Log.e(TAG, "Release error", e);
+            Log.e(TAG, "Error releasing camera resources", e);
         }
     }
 }

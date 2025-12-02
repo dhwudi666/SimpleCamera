@@ -4,8 +4,9 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <!-- 标题栏 -->
+    <!-- 正常模式工具栏 -->
     <LinearLayout
+        android:id="@+id/normalModeToolbar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -29,9 +30,48 @@
             android:textStyle="bold"
             android:gravity="center" />
 
+        <!-- 占位视图，保持对称 -->
         <View
             android:layout_width="48dp"
             android:layout_height="48dp" />
+
+    </LinearLayout>
+
+    <!-- 选择模式工具栏 -->
+    <LinearLayout
+        android:id="@+id/selectionModeToolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#2196F3"
+        android:padding="16dp"
+        android:visibility="gone">
+
+        <ImageButton
+            android:id="@+id/cancelSelectionButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            />
+
+        <TextView
+            android:id="@+id/selectionCountText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="已选择 0 项"
+            android:textSize="18sp"
+            android:textColor="@android:color/white"
+            android:gravity="center" />
+
+        <ImageButton
+            android:id="@+id/deleteButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_menu_delete"
+            android:background="?attr/selectableItemBackgroundBorderless"
+             />
 
     </LinearLayout>
 
@@ -45,6 +85,7 @@
         android:gravity="center"
         android:visibility="gone" />
 
+    <!-- 媒体文件列表 -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView"
         android:layout_width="match_parent"
