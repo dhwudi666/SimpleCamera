@@ -2,15 +2,12 @@ package com.example.simplecamera.viewmodel;
 
 import android.app.Application;
 import android.util.Log;
-
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-
 import com.example.simplecamera.database.entity.MediaFile;
 import com.example.simplecamera.database.repository.MediaRepository;
-
 import java.util.List;
 
 public class GalleryViewModel extends AndroidViewModel {
@@ -33,6 +30,13 @@ public class GalleryViewModel extends AndroidViewModel {
 
     public LiveData<String> getOperationStatus() {
         return operationStatus;
+    }
+
+    /**
+     * 获取删除状态
+     */
+    public LiveData<Boolean> getIsDeleting() {
+        return isDeleting;
     }
 
     /**

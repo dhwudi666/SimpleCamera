@@ -44,8 +44,6 @@ public class GalleryFragment extends Fragment implements MediaAdapter.OnSelectio
     private View selectionModeToolbar;
     private View normalModeToolbar;
 
-    private boolean isDeleting = false;
-
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -108,6 +106,13 @@ public class GalleryFragment extends Fragment implements MediaAdapter.OnSelectio
                 Toast.makeText(getContext(), status, Toast.LENGTH_SHORT).show();
             }
         });
+
+        // 观察删除状态（可选，用于禁用按钮等）
+        viewModel.getIsDeleting().observe(getViewLifecycleOwner(), isDeleting -> {
+            if (deleteButton != null) {
+                deleteButton.setEnabled(!isDeleting);
+            }
+        });
     }
 
     private void setupClickListeners() {
@@ -162,7 +167,8 @@ public class GalleryFragment extends Fragment implements MediaAdapter.OnSelectio
      * 删除选中的文件
      */
     private void deleteSelectedFiles() {
-        if (isDeleting) {
+        // 检查是否正在删除
+        if (viewModel.getIsDeleting().getValue() != null && viewModel.getIsDeleting().getValue()) {
             Log.w(TAG, "Delete operation already in progress");
             return;
         }
@@ -178,7 +184,6 @@ public class GalleryFragment extends Fragment implements MediaAdapter.OnSelectio
             return;
         }
         Log.d(TAG, "Starting deletion of " + selectedFiles.size() + " files");
-        isDeleting = true;
 
         try {
             // 显示删除进度
@@ -193,7 +198,6 @@ public class GalleryFragment extends Fragment implements MediaAdapter.OnSelectio
 
                         if (status.contains("成功") || status.contains("失败")) {
                             // 删除操作完成
-                            isDeleting = false;
                             exitSelectionMode();
 
                             // 安全地移除观察者
@@ -210,7 +214,6 @@ public class GalleryFragment extends Fragment implements MediaAdapter.OnSelectio
 
         } catch (Exception e) {
             Log.e(TAG, "Error during file deletion", e);
-            isDeleting = false;
             Toast.makeText(getContext(), "删除过程出错", Toast.LENGTH_SHORT).show();
         }
     }
@@ -363,7 +366,5 @@ public class GalleryFragment extends Fragment implements MediaAdapter.OnSelectio
             adapter.setSelectionMode(false);
             adapter.clearSelection();
         }
-
-        isDeleting = false;
     }
 }
